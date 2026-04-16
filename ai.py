@@ -34,7 +34,7 @@ def main():
     try:
         # モデルの読み込み
         model_people = YOLO('yolov8l.pt')
-        model_elevator = YOLO('Elevator_Trackerv5.pt')
+        model_elevator = YOLO('elevatorTrackerv6.pt')
         print("✅ モデルのロードに成功しました")
     except Exception as e:
         print(f"❌ エラー: {e}")
