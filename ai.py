@@ -9,7 +9,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 def setup_camera():
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
     # カメラの解像度設定
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
