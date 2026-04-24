@@ -101,7 +101,7 @@ def main():
         now_str = now.strftime(f"%Y/%m/%d  %H:%M:%S")
         print(f"{now_str} | {people_count}人 | {elevator_floor} | {direction} | {max_conf:.2f}")
 
-        mqtt_pub.publish_elevator_status(client, config.settings.MQTT_TOPIC, "E001",elevator_floor,people_count,direction)
+        mqtt_pub.publish_elevator_status(client, config.settings.MQTT_TOPIC, "E002",elevator_floor,people_count,direction)
         #client, topic, elevator_id,current_floor,occupancy,direction
 
         # 表示用のテキストを合成（例: "9 up"）
