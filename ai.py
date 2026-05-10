@@ -9,7 +9,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 def setup_camera():
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(config.CAMERA_ID)
     # カメラの解像度設定
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -34,7 +34,7 @@ def main():
     try:
         # モデルの読み込み
         model_people = YOLO('yolov8l.pt')
-        model_elevator = YOLO('elevatorTrackerv7.pt')
+        model_elevator = YOLO(config.AI_MODEL_NAME)
         print("✅ モデルのロードに成功しました")
     except Exception as e:
         print(f"❌ エラー: {e}")
@@ -101,7 +101,7 @@ def main():
         now_str = now.strftime(f"%Y/%m/%d  %H:%M:%S")
         print(f"{now_str} | {people_count}人 | {elevator_floor} | {direction} | {max_conf:.2f}")
 
-        mqtt_pub.publish_elevator_status(client, config.settings.MQTT_TOPIC, "E002",elevator_floor,people_count,direction)
+        mqtt_pub.publish_elevator_status(client, config.settings.MQTT_TOPIC, config.settings.DEVICE_ID,elevator_floor,people_count,direction)
         #client, topic, elevator_id,current_floor,occupancy,direction
 
         # 表示用のテキストを合成（例: "9 up"）
