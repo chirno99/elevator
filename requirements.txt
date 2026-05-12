@@ -1,0 +1,6 @@
+ultralytics
+opencv-python
+paho-mqtt
+pandas
+pydantic-settings
+python-dotenv
