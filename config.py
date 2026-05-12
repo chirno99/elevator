@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     MQTT_PORT: int
     MQTT_TOPIC: str
     DEVICE_ID: str
-    CAMERA_ID: int = 0
+    CAMERA_ID: int
     AI_MODEL_PATH: str
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"), # .envファイルの場所を指定

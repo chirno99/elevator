@@ -9,7 +9,7 @@ from datetime import datetime
 from ultralytics import YOLO
 
 def setup_camera():
-    cap = cv2.VideoCapture(config.CAMERA_ID)
+    cap = cv2.VideoCapture(config.settings.CAMERA_ID)
     # カメラの解像度設定
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -34,7 +34,7 @@ def main():
     try:
         # モデルの読み込み
         model_people = YOLO('yolov8l.pt')
-        model_elevator = YOLO(config.AI_MODEL_NAME)
+        model_elevator = YOLO(config.settings.AI_MODEL_PATH)
         print("✅ モデルのロードに成功しました")
     except Exception as e:
         print(f"❌ エラー: {e}")
