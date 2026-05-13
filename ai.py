@@ -33,8 +33,8 @@ def main():
     print("--- 🚀 リアルタイム監視システム起動 ---")
     try:
         # モデルの読み込み
-        model_people = YOLO('yolov8l.pt')
-        model_elevator = YOLO(config.settings.AI_MODEL_PATH)
+        model_people = YOLO(config.settings.YOLO_AI_MODEL_PASS)
+        model_elevator = YOLO(config.settings.ELEVATOR_AI_MODEL_PASS)
         print("✅ モデルのロードに成功しました")
     except Exception as e:
         print(f"❌ エラー: {e}")
