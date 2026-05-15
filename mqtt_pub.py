@@ -4,6 +4,7 @@ import time
 import random
 import config
 import struct
+import asyncio
 
 # 接続時のコールバック関数
 def on_connect(client, userdata, flags, rc, properties=None):
@@ -21,7 +22,7 @@ def connect_mqtt_publisher():
     return client
 
 # MQTTメッセージを公開する関数
-def publish_elevator_status(client, topic, elevator_id, current_floor, occupancy, direction):
+async def publish_elevator_status(client, topic, elevator_id, current_floor, occupancy, direction):
     # 状態保存用の辞書を初期化（初回のみ）
     if not hasattr(publish_elevator_status, "last_sent"):
         publish_elevator_status.last_sent = {}
