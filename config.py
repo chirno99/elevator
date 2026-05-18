@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     MQTT_TOPIC: str
     DEVICE_ID: str
     CAMERA_ID: int
+    TRAIN_IMAGE_SIZE: int
+    INFERENCE_IMAGE_SIZE: int
     YOLO_AI_MODEL_PASS: str
     ELEVATOR_AI_MODEL_PASS: str
     model_config = SettingsConfigDict(

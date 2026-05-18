@@ -12,16 +12,15 @@ from ultralytics import YOLO
 def setup_camera(): # カメラの初期化
     cap = cv2.VideoCapture(config.settings.CAMERA_ID)
     # カメラの解像度設定
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 448)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 448)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.settings.INFERENCE_IMAGE_SIZE)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.settings.INFERENCE_IMAGE_SIZE)
     return cap
 
-async def detect_objects(model, frame, imagsz=420, conf=0.6, classes=None, verbose=False): # AIモデルを使ってフレームから物体を検出する関数
+async def detect_objects(model, frame, imgsz, conf=0.6, classes=None, verbose=False): # AIモデルを使ってフレームから物体を検出する関数
     conf = float(conf)
-    # imgsz=320で軽量化。conf=0.6で誤検出を抑制
     gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # グレースケールに変換してモデルに入力（YOLOは通常3チャンネルの画像を想定しているため、グレースケールを3チャンネルに変換）
     input_frame = cv2.merge([gray_frame, gray_frame, gray_frame]) # グレースケールを3チャンネルに変換
-    results = model(input_frame, imgsz=imagsz, verbose=verbose, conf=conf, classes=classes) # モデルで物体検出を実行
+    results = model(input_frame, imgsz=imgsz, verbose=verbose, conf=conf, classes=classes) # モデルで物体検出を実行
 
     if results[0].boxes is None or len(results[0].boxes) == 0: # 検出結果がない場合は空のDataFrameを返す
         return pd.DataFrame(), results[0]
@@ -64,7 +63,7 @@ def judgementElecator(df_elevator, model_elevator, max_conf): # エレベータ�
 async def main():
 # def main():
     try:
-        image_size = 448  # 画像サイズを小さくして処理を軽くする
+        image_size = config.settings.INFERENCE_IMAGE_SIZE
         max_conf = 0.0 # エレベーターの検出結果の中で最も高い確信度を記録する変数
         person_conf = float(0.7) # 人物検出の信頼度の閾値を0.7に設定（誤検出を減らすため）
         elevator_conf = float(0.3) # エレベーターの数字・矢印検出の信頼度の閾値を0.3に設定（小さめにして見逃しを減らすため）
@@ -112,8 +111,8 @@ async def main():
                 
                 # --- AI検出実行 ---
                 result =await asyncio.gather(
-                    detect_objects(model_people, frame, imagsz=image_size, conf=person_conf, classes=[0]),  # クラス0は通常 'person'
-                    detect_objects(model_elevator, frame, imagsz=image_size, conf=elevator_conf)  # エレベーターは全クラス対象
+                    detect_objects(model_people, frame, imgsz=image_size, conf=person_conf, classes=[0]),  # クラス0は通常 'person'
+                    detect_objects(model_elevator, frame, imgsz=image_size, conf=elevator_conf)  # エレベーターは全クラス対象
                 )
                 # time.sleep(0.6) # 遅延を擬似再現
                 df_people, res_p = result[0] # 人物検出の結果
