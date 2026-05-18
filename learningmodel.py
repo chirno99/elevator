@@ -4,8 +4,8 @@ import config
 
 def main():
     project_root = os.path.dirname(os.path.abspath(__file__))
-    yaml_path = os.path.join(project_root, 'datasets_250117', 'data.yaml') # データセットのYAMLファイルのパスを指定
-    images_dir = os.path.join(project_root, 'datasets_250117', 'train', 'images') # トレーニング用画像のディレクトリのパスを指定
+    yaml_path = os.path.join(project_root, 'datasets', 'data.yaml') # データセットのYAMLファイルのパスを指定
+    images_dir = os.path.join(project_root, 'datasets', 'train', 'images') # トレーニング用画像のディレクトリのパスを指定
     model_name = config.settings.YOLO_AI_MODEL_PASS
     export_model_name = 'elevatorTrackerv8'
     epochs = 200 # エポック数を200に設定（必要に応じて調整してください）
