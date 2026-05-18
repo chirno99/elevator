@@ -9,4 +9,4 @@ yolo26n.pt
 # learningmodel.py outputs
 runs/
 *.onnx
-datasets/
+datasets/*
