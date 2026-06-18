@@ -4,24 +4,25 @@ import time
 import random
 import config
 import struct
+import asyncio
 
 # 接続時のコールバック関数
 def on_connect(client, userdata, flags, rc, properties=None):
     if rc == 0:
-        print(f"MQTTブローカーに接続成功: {config.settings.MQTT_HOST}:{config.settings.MQTT_PORT}")
+        print(f"✅MQTTブローカーに接続成功: {config.settings.MQTT_HOST}:{config.settings.MQTT_PORT}")
     else:
-        print(f"MQTTブローカーに接続失敗、エラーコード: {rc}")
+        print(f"❌MQTTブローカーに接続失敗、エラーコード: {rc}")
 
 # メッセージ送信用のクライアントを初期化
-def connect_mqtt_publisher():
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="elevator_publisher")
+def connect_mqtt_publisher(client_id="mqtt_publisher"):
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=client_id)
     client.on_connect = on_connect
     client.connect(config.settings.MQTT_HOST, config.settings.MQTT_PORT, keepalive=60) # keepaliveは接続維持の時間（秒）
     client.loop_start() # バックグラウンドでネットワークループを開始
     return client
 
 # MQTTメッセージを公開する関数
-def publish_elevator_status(client, topic, elevator_id, current_floor, occupancy, direction):
+async def publish_elevator_status(client, topic, elevator_id, current_floor, occupancy, direction):
     # 状態保存用の辞書を初期化（初回のみ）
     if not hasattr(publish_elevator_status, "last_sent"):
         publish_elevator_status.last_sent = {}
@@ -74,7 +75,7 @@ def publish_elevator_status(client, topic, elevator_id, current_floor, occupancy
         publish_elevator_status.last_sent[elevator_id] = current_status
         hex_payload = binary_payload.hex().upper()
         print(f"--- [変化検知] MQTT送信 ---")
-        # print(f"ID: {elevator_id}, Floor: {current_floor}, Occupancy: {occupancy}, Dir: {direction}")
-        print(f"Hex: {hex_payload}")
+        print(f"ID: {elevator_id}, Floor: {current_floor}, Occupancy: {occupancy}, Dir: {direction}")
+        # print(f"Hex: {hex_payload}")
     else:
         print(f"MQTT送信エラー: {result.rc}")
