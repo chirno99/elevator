@@ -1,50 +1,69 @@
-README.md
-Markdown
 # Elevator Tracker System
 
-エレベーター内の様子をAI（YOLOv5）で解析し、リアルタイムで物体の検知・追跡、およびその結果をMQTTで配信するシステムです。
+エレベーターの階・矢印・人数をカメラで推定し、MQTT で配信するエッジ側のプログラムです。画像の収集と学習は別リポジトリ [current-v3](https://github.com/BRUCE-R-YOUNG/current-v3) です。
 
-## プロジェクト構成
+## ファイル
 
-- `ai.py`: 推論エンジンおよびメインロジック。
-- `Elevator_Trackerv5.pt`: 学習済みのYOLOv5カスタムモデルファイル。
-- `mqtt_pub.py`: 検知したデータを外部システム（サーバー、ダッシュボード等）へ送信するためのMQTTパブリッシャー。
-- `config.py`: カメラのURL、MQTTサーバーの設定、閾値などの設定管理。
-- `.env.example`: 環境変数のテンプレート。
+| ファイル | 役割 |
+|---|---|
+| `ai.py` | 推論ループ。検出の直後に観測時刻を付けて MQTT へ渡す |
+| `mqtt_pub.py` | 9 バイト payload の組み立てと送信 |
+| `config.py` | `.env` の読み込み |
+| `camera_control.py` | 画角確認。1 枚撮って中央の十字と階表示の枠を描き、`latest_change.jpg` を出す |
+| `best.pt` | 階・矢印モデル（2026-10-14 から使用） |
+| `elevatorTrackerv7.pt` ほか | 以前の階・矢印モデル。戻すとき用に残している |
+| `.env.example` | 環境変数のひな型。本番の値は `.env`（Git には入れない） |
 
-## 特徴
+人数モデル `yolo26n.pt` は公式の YOLO 重みです。同じフォルダに置きます。リポジトリには同梱していません。
 
-- **カスタムAIモデル**: エレベーター内の特定の状況（混雑度、不審な挙動など）を検知するために最適化されたモデルを使用。
-- **リアルタイム通信**: MQTTプロトコルを使用し、低遅延で検知結果を通知。
-- **柔軟な設定**: `config.py` または `.env` ファイルにより、環境ごとの設定変更が容易。
+## MQTT
+
+| 項目 | 値 |
+|---|---|
+| ブローカー | `broker.hivemq.com:1883`（TLS なし、匿名） |
+| トピック | `elevator/status` |
+| QoS | 1 |
+| 形式 | リトルエンディアン `<HbbbI`、9 バイト |
+
+| フィールド | 型 | 意味 |
+|---|---|---|
+| 号機 | `H` | 1〜99。`E001`=1、`E002`=2、`E003`=3 |
+| 階 | `b` | 1〜32。0 階と範囲外は送らない |
+| 人数 | `b` | そのフレームで検出した人数 |
+| 方向 | `b` | 0=停止、1=上、2=下。不明は 0 |
+| 時刻 | `I` | 観測を確定したときの UTC Unix 秒 |
+
+同じ号機で階・人数・方向が変わらないあいだは送りません。未接続のときも送りません。
+
+## 人数の数え方
+
+いまの人数は、1 フレームの中で検出した person の数です。ラインを跨いだ IN/OUT の累積カウントはまだありません。`camera_control.py` の白い線は画角を合わせるための描画です。
 
 ## セットアップ
 
-### 1. 依存関係のインストール
-
-Python 3.8以上を推奨します。
+Python 3.10 以上。
 
 ```bash
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# Linux / Raspberry Pi
+# source venv/bin/activate
 pip install -r requirements.txt
-# (注: リポジトリにrequirements.txtがない場合は、torch, opencv-python, paho-mqtt 等を個別にインストールしてください)
-2. 環境設定
-.env.example をコピーして .env を作成し、必要な情報を記入します。
-
-Bash
 cp .env.example .env
-3. 実行
-Bash
+```
+
+`.env` のホスト名は `MQTT_HOST` です。`MQTT_BROKER` という名前は `config.py` が読みません。`DEVICE_ID` はこの端末では `E003` です。
+
+```bash
 python ai.py
-言語
-Python 100%
+python camera_control.py
+```
 
-更新履歴
-2026/02/19: 最新アップデート（リポジトリ情報に基づく）
+必要なときだけ起動します。`elevator-ai.service` での常時起動はしていません。再起動すると手動起動のプロセスは戻りません。
 
+## 更新履歴
 
----
-
-### 補足
-リポジトリ内に詳細なドキュメントがなかったため、ファイル構成から一般的な構成を推測して作成しています。
-- **`Elevator_Trackerv5.pt`** はPyTorchの重みファイルであるため、実行には `torch` および `ultralytics` (YOLO) のライブラリが必要になる可能性が高いです。
-- **MQTT**を使用しているため、動作確認には Mosquitto などのブローカーが必要です。
+- 2026-10-21: 受信仕様に合わせ、payload を 9 バイト `<HbbbI` にした。トピックは `elevator/status`。階 0 と 1〜32 の外、号機 1〜99 の外は送らない。階・矢印モデルを `best.pt` にした
+- 2026-06-03: 画角確認の `camera_control.py` を追加
+- 2026-02-19: リポジトリ作成
