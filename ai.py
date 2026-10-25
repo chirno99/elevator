@@ -1,10 +1,9 @@
 import cv2
-import torch
 import pandas as pd
 import time
-import paho.mqtt.client as mqtt
 import mqtt_pub
 import config
+import people_counter
 from datetime import datetime
 from ultralytics import YOLO
 
@@ -41,6 +40,12 @@ def main():
         return
 
     cap = setup_camera()
+    occupancy = people_counter.LineOccupancyCounter.from_yaml()
+    print(
+        "人数は検知ラインの跨ぎで数えます。"
+        f" 乗車方向={occupancy.enter_direction}"
+        "（空のかごで起動してください）"
+    )
 
     client=mqtt_pub.connect_mqtt_publisher()
     time.sleep(2)
@@ -49,7 +54,7 @@ def main():
     # ログの見出しを表示
 
     print("\n" + "-" * 60)
-    print(f"{'時刻':<10} | {'人数':<4} | {'表示内容':<15} | {'方向'} | {'確信度'}")
+    print(f"{'時刻':<10} | {'乗車人数':<24} | {'表示内容':<15} | {'方向'} | {'確信度'}")
     print("-" * 60)
 
     while cap.isOpened():
@@ -58,20 +63,35 @@ def main():
             break
 
         # --- AI検出実行 ---
-        df_people, res_p = detect_objects(frame, model_people)
         df_elevator, res_e = detect_objects(frame, model_elevator)
 
-        # 1. 人数のカウント (クラス0が通常 'person')
-        results_p = model_people(frame, imgsz=320, verbose=False, conf=0.6, classes=[0])
+        # 1. 人数はライン跨ぎの累積（その場に映っている人数ではない）
+        frame_h, frame_w = frame.shape[:2]
+        results_p = model_people.track(
+            frame,
+            imgsz=320,
+            verbose=False,
+            conf=0.6,
+            classes=[0],
+            persist=True,
+            tracker="bytetrack.yaml",
+        )
         res_p = results_p[0]
-
-        if res_p.boxes is not None:
-            df_people = pd.DataFrame(res_p.boxes.data.cpu().numpy(), columns=[
-                                    'xmin', 'ymin', 'xmax', 'ymax', 'confidence', 'class'])
-            people_count = len(df_people)
-        else:
-            df_people = pd.DataFrame()
-            people_count = 0
+        centers = []
+        track_ids = []
+        detected = 0
+        if res_p.boxes is not None and len(res_p.boxes) > 0:
+            xyxy = res_p.boxes.xyxy.cpu().numpy()
+            detected = len(xyxy)
+            if res_p.boxes.id is not None:
+                for box, track_id in zip(xyxy, res_p.boxes.id.cpu().numpy()):
+                    centers.append((
+                        float((box[0] + box[2]) / 2) / frame_w,
+                        float((box[1] + box[3]) / 2) / frame_h,
+                    ))
+                    track_ids.append(int(track_id))
+        count_state = occupancy.update(centers, track_ids)
+        people_count = count_state["occupancy"]
         # 2. エレベーター情報の取得（数字と矢印の両方に対応）
         elevator_floor = 0
         direction = 0
@@ -99,7 +119,11 @@ def main():
         # 3. ターミナルへのログ出力
         now = datetime.now()
         now_str = now.strftime(f"%Y/%m/%d  %H:%M:%S")
-        print(f"{now_str} | {people_count}人 | {elevator_floor} | {direction} | {max_conf:.2f}")
+        count_text = (
+            f"乗車{people_count} IN{count_state['entered']} "
+            f"OUT{count_state['exited']} 検出{detected}"
+        )
+        print(f"{now_str} | {count_text} | {elevator_floor} | {direction} | {max_conf:.2f}")
 
         observed_at = int(time.time())
         mqtt_pub.publish_elevator_status(

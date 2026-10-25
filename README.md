@@ -9,7 +9,9 @@
 | `ai.py` | 推論ループ。検出の直後に観測時刻を付けて MQTT へ渡す |
 | `mqtt_pub.py` | 9 バイト payload の組み立てと送信 |
 | `config.py` | `.env` の読み込み |
-| `camera_control.py` | 画角確認。1 枚撮って中央の十字と階表示の枠を描き、`latest_change.jpg` を出す |
+| `people_counter.py` | 人数ラインを跨いだ IN/OUT から乗車人数を出す |
+| `camera_control.py` | 画角調整。640x480 で1枚撮り、緑枠と人数ラインを `latest_change.jpg` に描く |
+| `camera_framing.yaml` | 承認済みの階表示枠と人数ライン（幅・高さに対する比率） |
 | `best.pt` | 階・矢印モデル（2026-10-14 から使用） |
 | `elevatorTrackerv7.pt` ほか | 以前の階・矢印モデル。戻すとき用に残している |
 | `.env.example` | 環境変数のひな型。本番の値は `.env`（Git には入れない） |
@@ -37,7 +39,13 @@
 
 ## 人数の数え方
 
-いまの人数は、1 フレームの中で検出した person の数です。ラインを跨いだ IN/OUT の累積カウントはまだありません。`camera_control.py` の白い線は画角を合わせるための描画です。
+MQTT の人数は、そのフレームに映っている人数ではありません。`camera_framing.yaml` の `count_line` を人物の中心が跨いだ回数です。
+
+- 乗車（IN）: 扉側からカメラ側へ跨ぐ（`enter_direction: toward_camera`）
+- 降車（OUT）: カメラ側から扉側へ跨ぐ
+- 送る人数: IN − OUT。0未満にはせず、127を超える分は切る
+
+`ai.py` は空のエレベーターで起動します。起動前から乗っている人は数に入りません。IN と OUT が逆だったら `enter_direction` を `toward_door` にします。
 
 ## セットアップ
 
@@ -60,10 +68,14 @@ python ai.py
 python camera_control.py
 ```
 
+`camera_control.py` は本番と同じ 640x480 で撮ります。`latest_change.jpg` で、左右の黒い階表示が緑枠の中に入っているかを見ます。入っていれば、赤い人数ラインも `camera_framing.yaml` の位置です。枠から外れていればカメラの向きを直して、もう一度実行します。
+
 必要なときだけ起動します。`elevator-ai.service` での常時起動はしていません。再起動すると手動起動のプロセスは戻りません。
 
 ## 更新履歴
 
+- 2026-10-25: 人数を検知ライン跨ぎの乗車人数（IN − OUT）にして `ai.py` に接続した
+- 2026-10-23: 画角調整を承認済みの青枠・赤線に切り替え、撮影を 640x480 にした
 - 2026-10-21: 受信仕様に合わせ、payload を 9 バイト `<HbbbI` にした。トピックは `elevator/status`。階 0 と 1〜32 の外、号機 1〜99 の外は送らない。階・矢印モデルを `best.pt` にした
 - 2026-06-03: 画角確認の `camera_control.py` を追加
 - 2026-02-19: リポジトリ作成
