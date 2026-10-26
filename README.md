@@ -72,6 +72,21 @@ python camera_control.py
 
 必要なときだけ起動します。`elevator-ai.service` での常時起動はしていません。再起動すると手動起動のプロセスは戻りません。
 
+## Soracom のみ（学校 Wi-Fi に届かない場所）
+
+ラズパイの `wwan0` が Soracom ドングルです。`ip route` で `default` が `wwan0` なら、MQTT は Soracom 経由で外に出ます。PC からラズパイへ SSH するには同じ Wi-Fi が要るため、**現地ではラズパイのターミナルで**起動します（Tailscale は使いません）。
+
+```bash
+cd /home/pi/elevator
+chmod +x scripts/*.sh
+# 推論（空のかごで）
+./scripts/start_ai.sh
+# 画角を 45 秒ごと（別窓。止めるときは ./scripts/stop_edge.sh）
+nohup ./scripts/framing_loop.sh >> /tmp/framing_loop.log 2>&1 &
+```
+
+画角の確認画像は `/home/pi/elevator/latest_change.jpg`。ログは `/tmp/ai.log` と `/tmp/framing_loop.log`。
+
 ## 更新履歴
 
 - 2026-10-25: 人数を検知ライン跨ぎの乗車人数（IN − OUT）にして `ai.py` に接続した
